@@ -276,7 +276,9 @@ public final class Ssh extends AbstractSshShell {
                 (int) TimeUnit.SECONDS.toMillis(Tv.TEN)
             );
             session.setServerAliveCountMax(Tv.MILLION);
-            session.connect();
+            session.connect(
+                (int) TimeUnit.MINUTES.toMillis(Tv.THREE)
+            );
             Files.deleteIfExists(file.toPath());
             return session;
         } catch (final JSchException ex) {
