@@ -245,12 +245,13 @@ public interface Shell {
          * @throws IOException If fails
          */
         public String exec(final String cmd) throws IOException {
-            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            this.origin.exec(
-                cmd, new DeadInput().stream(),
-                baos, baos
-            );
-            return baos.toString(StandardCharsets.UTF_8.toString());
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                this.origin.exec(
+                    cmd, new DeadInput().stream(),
+                    baos, baos
+                );
+                return baos.toString(StandardCharsets.UTF_8.toString());
+            }
         }
     }
 
