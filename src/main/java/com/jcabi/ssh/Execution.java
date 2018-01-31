@@ -29,6 +29,7 @@
  */
 package com.jcabi.ssh;
 
+import com.jcabi.aspects.Tv;
 import com.jcabi.log.Logger;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSchException;
@@ -114,7 +115,9 @@ interface Execution {
                 channel.setOutputStream(this.stdout, false);
                 channel.setInputStream(this.stdin, false);
                 channel.setCommand(this.command);
-                channel.connect();
+                channel.connect(
+                    (int) TimeUnit.MINUTES.toMillis(Tv.THREE)
+                );
                 Logger.info(this, "$ %s", this.command);
                 return this.exec(channel);
             } catch (final JSchException ex) {
