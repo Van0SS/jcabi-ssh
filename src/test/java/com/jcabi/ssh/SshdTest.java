@@ -29,13 +29,19 @@
  */
 package com.jcabi.ssh;
 
+import com.jcabi.aspects.Tv;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import org.apache.commons.lang3.SystemUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
+import org.hamcrest.core.IsInstanceOf;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 /**
@@ -54,6 +60,12 @@ public final class SshdTest {
      */
     @Rule
     public final transient TemporaryFolder temp = new TemporaryFolder();
+
+    /**
+     * Expected Exception.
+     */
+    @Rule
+    public final transient ExpectedException thrown = ExpectedException.none();
 
     /**
      * Check that it's not Windows.
@@ -101,6 +113,51 @@ public final class SshdTest {
                 ).exec("echo 'how are you'"),
                 Matchers.startsWith("how are")
             );
+        } finally {
+            sshd.close();
+        }
+    }
+
+    /**
+     * Execute command on a real SSH server before timeout.
+     * @throws Exception In case of error.
+     */
+    @Test
+    public void executeCommandNoTimeout() throws Exception {
+        final Sshd sshd = new Sshd();
+        try {
+            MatcherAssert.assertThat(
+                new Shell.Plain(
+                    new Shell.Timeouted(
+                        new Shell.Safe(sshd.connect()),
+                        Duration.ofSeconds(Tv.FIVE)
+                    )
+                ).exec("echo done"),
+                Matchers.startsWith("done")
+            );
+        } finally {
+            sshd.close();
+        }
+    }
+
+    /**
+     * Execute long command on a real SSH server and get timeout.
+     * @throws Exception In case of error.
+     */
+    @Test
+    public void executeCommandTimeout() throws Exception {
+        this.thrown.expect(IOException.class);
+        this.thrown.expectCause(
+            IsInstanceOf.instanceOf(TimeoutException.class)
+        );
+        final Sshd sshd = new Sshd();
+        try {
+            new Shell.Plain(
+                new Shell.Timeouted(
+                    new Shell.Safe(sshd.connect()),
+                    Duration.ofMillis(Tv.HUNDRED)
+                )
+            ).exec("sleep 1");
         } finally {
             sshd.close();
         }

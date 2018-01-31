@@ -36,6 +36,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -274,6 +282,53 @@ public interface Shell {
                 new TeeOutputStream(stdout, Logger.stream(Level.INFO, this)),
                 new TeeOutputStream(stderr, Logger.stream(Level.WARNING, this))
             );
+        }
+    }
+
+    /**
+     * Timeouted run.
+     */
+    @Immutable
+    @ToString
+    @EqualsAndHashCode(of = {"origin", "timeout"})
+    final class Timeouted implements Shell {
+        /**
+         * Original.
+         */
+        private final transient Shell origin;
+        /**
+         * Timeout.
+         */
+        private final transient Duration timeout;
+        /**
+         * Ctor.
+         * @param shell Original shell
+         * @param timeout Command processing timeout
+         */
+        public Timeouted(final Shell shell, final Duration timeout) {
+            this.origin = shell;
+            this.timeout = timeout;
+        }
+        // @checkstyle ParameterNumberCheck (5 line)
+        @Override
+        public int exec(final String command, final InputStream stdin,
+            final OutputStream stdout, final OutputStream stderr)
+            throws IOException {
+            final Callable<Integer> task =
+                () -> this.origin.exec(command, stdin, stdout, stderr);
+            final ExecutorService executor =
+                Executors.newSingleThreadExecutor();
+            final Future<Integer> future = executor.submit(task);
+            try {
+                return future.get(
+                    this.timeout.toMillis(), TimeUnit.MILLISECONDS
+                );
+            } catch (final TimeoutException | ExecutionException
+                | InterruptedException ex) {
+                throw new IOException(ex);
+            } finally {
+                future.cancel(true);
+            }
         }
     }
 }
